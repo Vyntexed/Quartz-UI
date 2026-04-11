@@ -34,9 +34,12 @@ Quartz:new_window(
   {
     loadingWindow = {
       Enabled = true,
+    
       Title = "Title",
       Subtitle = "Subtitle",
-      Version = "V1.0.0"
+      Version = "V1.0.0",
+
+      minLoadTime = 3
     }
   }
 )
