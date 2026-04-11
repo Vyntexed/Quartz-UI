@@ -17,11 +17,31 @@ Quartz:init({
 
 ## new_window
 
-This function can take a lot of different settings like [Flags](#Flags) and [Styles](#Styles)
+This function can take a configuration table (if provided) and modifiers like [Flags](#Flags) and [Styles](#Styles)
 
 ```lua
 local window = Quartz:new_window()
 ```
+
+If a configuration table is provided, it must always be the first argument.
+
+If no configuration table is provided, all arguments are treated as unordered modifiers (e.g. flags and styles) and can be placed in any position.
+
+Flags and styles are effectively simple strings that are compared from tables like `Quartz.Flags` and `Quartz.Styles`
+
+```lua
+Quartz:new_window(
+  {
+    loadingWindow = {
+      Enabled = true,
+      Title = "Title",
+      Subtitle = "Subtitle",
+      Version = "V1.0.0"
+    }
+  }
+)
+```
+
 <details>
   <summary>Window hooks</summary>
 
