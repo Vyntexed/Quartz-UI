@@ -50,7 +50,7 @@ local window = Quartz:new_window()
 | `Quartz.Flags.NoDrag` | Removes window dragging effectively making the window locked in place |
 | `Quartz.Flags.NoAnimations` | Disables all animations to improve performance |
 
-Here's an example of how to use Flags
+Flag Usage:
 ```lua
 Quartz:new_window(
   Quartz.Flags.NoResize,
@@ -67,3 +67,10 @@ You can add any amount of flags, just make sure you don't repeat the same flags 
 | `Quartz.Styles.Dashboard` | Uses a dashboard style with a panel on the left side and content on the right, everything here is pre-programmed to fit and look nice |
 | `Quartz.Styles.Custom` | No style, you can make the window look however you see fit |
 
+Style Usage:
+```lua
+Quartz:new_window(
+  Quartz.Styles.Dashboard
+)
+```
+Please note that if you put in multiple styles it will default to the first style given and throw a warning. You can only use 1 style per window.
