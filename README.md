@@ -18,7 +18,7 @@ Quartz:init({
 
 ## new_window
 
-You can pass flags to `new_window` using `Quartz.flags.FlagName` you can find all the flags [here](#Flags)
+This function can take a lot of different settings like [Flags](#Flags) and [Styles](#Styles)
 
 ```lua
 local window = Quartz:new_window()
@@ -47,6 +47,18 @@ local window = Quartz:new_window()
 | Flag | Description       |
 |--------|---------------------|
 | `Quartz.Flags.NoResize` | Prevents the user from resizing a window |
+| `Quartz.Flags.NoDrag` | Removes window dragging effectively making the window locked in place |
+| `Quartz.Flags.NoAnimations` | Disables all animations to improve performance |
+
+Here's an example of how to use Flags
+```lua
+Quartz:new_window(
+  Quartz.Flags.NoResize,
+  Quartz.Flags.NoDrag,
+  Quartz.Flags.NoAnimations
+)
+```
+You can add any amount of flags, just make sure you don't repeat the same flags otherwise you might lose performance at your own cost.
 
 ## Styles
 
