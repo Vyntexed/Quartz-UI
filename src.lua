@@ -1,6 +1,7 @@
 local localPlayer = game:GetService("Players").LocalPlayer
 local userInputService = game:GetService("UserInputService")
 local tweenService = game:GetService("TweenService")
+local lightningService = game:GetService("Lighting")
 
 local library = {}
 
@@ -8,17 +9,46 @@ library.themes = {
 	dark = {
 		bg_primary = {11, 15, 26,0.2},
 		
+		-- text
+		text_primary = {255, 255, 255, 0},
+		text_secondary = {235, 235, 245, 0.4},
+		text_tertiary = {235, 235, 245, 0.7},
+		text_disabled = {235,235, 245, 0.82}
+		
 	},
 	
 	light = {
-		bg_primary = {245, 247, 252,0.4}
+		bg_primary = {245, 247, 252,0.4},
+		
+		-- text
+		text_primary = {0, 0, 0,0},
+		text_secondary = {60, 60, 67,0.4},
+		text_tertiary = {60, 60, 67, 0.7},
+		text_disabled = {60, 60, 67, 0.82}
 	}
 }
 
-library.currentTheme = library.themes.dark
+library.theme = library.themes.dark
 
-library.flags = {
-	["NoResize"] = "flagNoResize"
+library.Styles = {
+	Dashboard = "styleDashboard",
+	Custom = "styleCustom"
+}
+
+library.Flags = {
+	["NoResize"] = "flagNoResize",
+	["NoDrag"] = "flagNoDrag",
+	["NoAnimations"] = "flagNoAnimations"
+}
+
+local logger = {
+	warn = function(name,content)
+		warn("Quartz: "..name.." - "..content)
+	end,
+	
+	error = function(name,content)
+		error("Quartz: "..name.." - "..content)
+	end,
 }
 
 local misc = {
@@ -26,6 +56,16 @@ local misc = {
 		local a = Instance.new("Frame", library._internal.latestObject)
 		library._internal.latestObject = a
 		return a	
+	end,
+	
+	Label = function(Text,Parent)
+		local a = Instance.new("TextLabel",Parent or library._internal.latestObject)
+		library._internal.latestObject = a
+		
+		a.Text = Text or "Placeholder"
+		a.FontFace = Font.new(Font.fromName("Inter").Family,Enum.FontWeight.Medium,Enum.FontStyle.Normal)
+		
+		return a
 	end,
 	
 	UiGradient = function(Parent)
@@ -121,8 +161,23 @@ local misc = {
 		return UDim2.new(t1[1],t1[2],t2[1],t2[2])
 	end,
 	
+	get_color = function(tbl)
+		return {Color3.fromRGB(tbl[1],tbl[2],tbl[3]),tbl[4] or 0}
+	end,
+	
+	scaleToOffsetUDim2 = function(udim2)
+		local camera = game:GetService("Workspace").CurrentCamera
+		local viewport = camera.ViewportSize
+
+		return UDim2.new(
+			0,
+			udim2.X.Scale * viewport.X + udim2.X.Offset,
+			0,
+			udim2.Y.Scale * viewport.Y + udim2.Y.Offset
+		)
+	end,
+	
 	blur = function(to_blur)
-		local Lighting          = game:GetService("Lighting")
 		local camera			= workspace.CurrentCamera
 
 		local BLUR_SIZE         = Vector2.new(10, 10)
@@ -130,14 +185,12 @@ local misc = {
 		local PART_TRANSPARENCY = 1 - 1e-7
 		local START_INTENSITY	= 1
 
-		script.Parent:SetAttribute("BlurIntensity", START_INTENSITY)
-
 		local BLUR_OBJ          = Instance.new("DepthOfFieldEffect")
 		BLUR_OBJ.FarIntensity   = 0
-		BLUR_OBJ.NearIntensity  = script.Parent:GetAttribute("BlurIntensity")
+		BLUR_OBJ.NearIntensity  = START_INTENSITY
 		BLUR_OBJ.FocusDistance  = 0.25
 		BLUR_OBJ.InFocusRadius  = 0
-		BLUR_OBJ.Parent         = Lighting
+		BLUR_OBJ.Parent         = lightningService
 
 		local PartsList         = {}
 		local BlursList         = {}
@@ -146,7 +199,7 @@ local misc = {
 
 		BlurredGui.__index      = BlurredGui
 
-		function rayPlaneIntersect(planePos, planeNormal, rayOrigin, rayDirection)
+		local function rayPlaneIntersect(planePos, planeNormal, rayOrigin, rayDirection)
 			local n = planeNormal
 			local d = rayDirection
 			local v = rayOrigin - planePos
@@ -158,7 +211,7 @@ local misc = {
 			return rayOrigin + a * rayDirection, a
 		end
 
-		function rebuildPartsList()
+		local function rebuildPartsList()
 			PartsList = {}
 			BlursList = {}
 			for blurObj, part in pairs(BlurObjects) do
@@ -218,7 +271,7 @@ local misc = {
 			return new
 		end
 
-		function updateGui(blurObj)
+		local function updateGui(blurObj)
 			if (not blurObj.Frame.Visible) then
 				blurObj.Part.Transparency = 1
 				return
@@ -259,7 +312,6 @@ local misc = {
 		end
 
 		function BlurredGui.updateAll()
-			BLUR_OBJ.NearIntensity = tonumber(script.Parent:GetAttribute("BlurIntensity"))
 
 			for i = 1, #BlursList do
 				updateGui(BlursList[i])
@@ -277,22 +329,202 @@ local misc = {
 			rebuildPartsList()
 		end
 
-		BlurredGui.new(to_blur, "Rectangle")
+		local self = BlurredGui.new(to_blur, "Rectangle")
 
 		BlurredGui.updateAll()
+		
+		return {
+			Destroy = function()
+				BlurredGui.Destroy(self)
+			end,
+			Update = function()
+				BlurredGui.updateAll()
+			end,
+		}
 	end,
+	
 }
 
-function library:init()
+function library:init(data)
+
 	library._internal = {}
 	library._internal.latestObject = nil
 	library._internal.latestWindow = nil
 	library._internal.screen = Instance.new("ScreenGui")
-	library._internal.screen.Parent = localPlayer.PlayerGui
+
+
+	library._internal.settings = {
+		secure = false
+	}
+
+	local hasBeenParented = false
+
+	if data then
+
+		if data.secure == true then
+			library._internal.settings.secure = data.secure
+			
+			xpcall(function()
+				library._internal.screen.Parent = game:GetService("CoreGui")
+				
+				if library._internal.screen.Parent == nil then
+					hasBeenParented = false
+				else
+					hasBeenParented = true
+				end
+			end, function()
+				hasBeenParented = false
+			end)
+			
+			if hasBeenParented == false then
+				logger.error("secure","Unable to access CoreGui, since secure is enabled execution has been stopped")
+			end
+			
+			misc.blur = function()
+				return {
+					Destroy = function() end,
+					Update = function() end
+				}
+			end	
+		end
+	end
+	
+	if hasBeenParented == false then
+		hasBeenParented = true
+		library._internal.screen.Parent = localPlayer.PlayerGui
+	end
+	
+	repeat
+		task.wait(0.1)
+	until
+	game:IsLoaded()
 end
 
-function library:new_window(...)
+function library:new_window(data, ...)
+	
+	local args = {...}
+	
+	if data ~= nil then
+		table.insert(args,data)
+	end
+	
+
+	local CurrentStyle = {}
+
+	for i, v in pairs({...}) do
+		for a,b in pairs(library.Styles) do
+			if v == b then
+				table.insert(CurrentStyle,v)
+			end
+		end
+	end
+
+	if #CurrentStyle > 1 then
+		logger.warn("window_style","Multiple styles used defaulting to style with the index 1")
+	elseif #CurrentStyle <= 0 then
+		CurrentStyle = {library.Styles.Custom}
+	end
+
+	CurrentStyle = CurrentStyle[1]
+
+	local cache = {
+		flags = {}
+	}
+
+	local function hasFlag(Flag)
+
+		if cache.flags[Flag] then
+			return cache.flags[Flag]
+		end
+
+		if table.find(args,Flag) then
+			cache.flags[Flag] = true
+			return true
+		end
+
+
+		cache.flags[Flag] = false
+		return false
+	end
+	
+	local load_window = { t = tick(), w = nil, bl = nil}
+	
+	if data ~= nil then
+
+		if data.loadingWindow ~= nil and data.loadingWindow.Enabled == true then
+			local dt = data.loadingWindow
+
+			local lW = misc.Frame()
+			load_window.w = lW
+			lW.Visible = false
+			lW.Parent = library._internal.screen
+
+			lW.Size = misc.table_to_UDIM2({0.234, 0},{0.284, 0})
+			lW.Position = UDim2.new(0.5,0,0.5,0)
+			lW.AnchorPoint = Vector2.new(0.5,0.5)
+
+			load_window.bl = misc.blur(lW)
+			misc.UiCorner({0.036, 0}).Parent = lW
+			local winAR = misc.UiAspectRatio(1.648)
+			winAR.Parent = lW
+			load_window.s = winAR
+
+			lW.BackgroundTransparency = misc.get_color(library.theme.bg_primary)[2]
+			lW.BackgroundColor3 = misc.get_color(library.theme.bg_primary)[1]
+
+			local win_dec = misc.Frame()
+			win_dec.Parent = lW
+			win_dec.Size = misc.table_to_UDIM2({1, 0},{1, 0})
+			misc.UiCorner({0.036,0},win_dec)
+			local uigrad_dec = misc.UiGradient(win_dec)
+			uigrad_dec.Rotation = -90
+			uigrad_dec.Color = ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,255,255))})
+			uigrad_dec.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(1,0.75)})
+
+			local TitleLabel = misc.Label(dt.Title or "Quartz UI",lW)
+
+			TitleLabel.TextScaled = true
+			TitleLabel.BackgroundTransparency = 1
+			TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+			TitleLabel.FontFace = Font.new(TitleLabel.FontFace.Family,Enum.FontWeight.Bold,TitleLabel.FontFace.Style)
+			TitleLabel.TextTransparency = misc.get_color(library.theme.text_primary)[2]
+			TitleLabel.TextColor3 = misc.get_color(library.theme.text_primary)[1]
+
+			TitleLabel.Size = misc.table_to_UDIM2({0.576, 0},{0.204, 0})
+			TitleLabel.Position = misc.table_to_UDIM2({0.039, 0},{0.089, 0})
+
+			local Subtitle = misc.Label(dt.Subtitle or "UI Framework",lW)
+
+			Subtitle.TextScaled = true
+			Subtitle.BackgroundTransparency = 1
+			Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+
+			Subtitle.TextTransparency = misc.get_color(library.theme.text_secondary)[2]
+			Subtitle.TextColor3 = misc.get_color(library.theme.text_secondary)[1]
+
+			Subtitle.Size = misc.table_to_UDIM2({0.576, 0},{0.138, 0})
+			Subtitle.Position = misc.table_to_UDIM2({0.039, 0},{0.26, 0})
+
+			local versionlabel = misc.Label(dt.Version or "v1.0.0",lW)
+
+			versionlabel.TextScaled = true
+			versionlabel.BackgroundTransparency = 1
+			versionlabel.TextXAlignment = Enum.TextXAlignment.Right
+
+			versionlabel.TextTransparency = misc.get_color(library.theme.text_tertiary)[2]
+			versionlabel.TextColor3 = misc.get_color(library.theme.text_tertiary)[1]
+
+			versionlabel.Size = misc.table_to_UDIM2({0.576, 0},{0.114, 0})
+			versionlabel.Position = misc.table_to_UDIM2({0.378, 0},{0.795, 0})
+
+			lW.Visible = true
+
+		end
+
+	end
+	
 	local window = misc.Frame()
+	window.Visible = false
 	window.Parent = library._internal.screen
 	
 	window.Size = misc.table_to_UDIM2({0.506, 0},{0.651, 0})
@@ -304,9 +536,8 @@ function library:new_window(...)
 	local winAR = misc.UiAspectRatio(1.561)
 	winAR.Parent = window
 	
-	window.BackgroundTransparency = library.currentTheme.bg_primary[4]
-	window.BackgroundColor3 = Color3.fromRGB(library.currentTheme.bg_primary[1],library.currentTheme.bg_primary[2],library.currentTheme.bg_primary[3])
-	
+	window.BackgroundTransparency = misc.get_color(library.theme.bg_primary)[2]
+	window.BackgroundColor3 = misc.get_color(library.theme.bg_primary)[1]
 	library._internal.latestWindow = window
 	
 	local win_dec = misc.Frame()
@@ -361,15 +592,53 @@ function library:new_window(...)
 	ULL.Padding = UDim.new(0.06, 0)
 	ULL.FillDirection = Enum.FillDirection.Horizontal
 	ULL.SortOrder = Enum.SortOrder.LayoutOrder
+
+	if load_window ~= nil then
+		
+		local dur = 3
+		
+		if tick()-load_window.t <= dur then
+			task.wait(math.clamp( ( dur - (tick()-load_window.t) ),0,dur+5))
+		end
+		
+		if hasFlag(library.Flags.NoAnimations) == true then
+			load_window.w.Visible = false
+			load_window.bl.Update()
+			load_window.bl:Destroy()
+			load_window.w:Destroy()
+		else
+			local t1 = tweenService:Create(load_window.w,TweenInfo.new(0.3,Enum.EasingStyle.Circular,Enum.EasingDirection.Out),{Size=window.Size,Position=window.Position})
+			local t2 = tweenService:Create(load_window.s,t1.TweenInfo,{AspectRatio=winAR.AspectRatio})
+			
+			for i, v in pairs(load_window.w:GetDescendants()) do
+				if v:IsA("TextLabel") then
+					v.Transparency = 1
+					--tweenService:Create(v,TweenInfo.new(t1.TweenInfo.Time*1,Enum.EasingStyle.Linear,Enum.EasingDirection.Out),{TextTransparency=1}):Play()
+				end
+			end
+			
+			t1:Play()
+			t2:Play()
+			t1.Completed:Wait()
+			window.Visible = true
+			load_window.w.Visible = false
+			load_window.w:Destroy()
+		end
+		
+	end
 	
-	if not table.find({...},library.flags.NoResize) then
+	if hasFlag(library.Flags.NoDrag) == false then
+		misc.add_drag(topbar,window)
+	end
+
+	if hasFlag(library.Flags.NoResize) == false then
 		--local pos = window.Position
 		--local size = window.Size
 		--local topbarSize = topbar.Size
-		
+
 		--fullscreen_btn.Activated:Connect(function()
 		--	winAR:Destroy()
-			
+
 		--	if window.Size == UDim2.new(1,0,1,0) then
 		--		winAR = misc.UiAspectRatio(1.561)
 		--		winAR.Parent = window
@@ -379,17 +648,81 @@ function library:new_window(...)
 		--	else
 		--		pos = window.Position
 		--		size = window.Size
-				
+
 		--		topbarSize = topbar.Size
 		--		topbar.Size = UDim2.new(1, 0, 0, topbar.AbsoluteSize.Y)
-				
+
 		--		window.Size = misc.table_to_UDIM2({1, 0},{1, 0})
 		--		window.Position = misc.table_to_UDIM2({0.5,0},{0.5,0})
 		--	end	
 		--end)
 	end
 	
-	misc.add_drag(topbar,window)
+	local hooks = {
+		buttons = {
+			close_btn = {},
+			minimize_btn = {},
+			maximize_btn = {},
+		}
+	}
+	
+	return {
+		hooks = {
+			buttons = {
+				close_btn = {
+					Connect = function(self,name,func)
+						local a = x_btn.Activated:Connect(func)
+
+						hooks.buttons.close_btn[name] = a
+
+						return a
+					end,
+					
+					Disconnect = function(self,name)
+						if hooks.buttons.close_btn[name] ~= nil then
+							hooks.buttons.close_btn[name]:Disconnect()
+						else
+							logger.warn("close_btn",`No hook named {name}`)
+						end
+					end,
+				},
+				minimize_btn = {
+					Connect = function(self,name,func)
+						local a = minimize_btn.Activated:Connect(func)
+
+						hooks.buttons.minimize_btn[name] = a
+
+						return a
+					end,
+					
+					Disconnect = function(self,name)
+						if hooks.buttons.minimize_btn[name] ~= nil then
+							hooks.buttons.minimize_btn[name]:Disconnect()
+						else
+							logger.warn("minimize_btn",`No hook named {name}`)
+						end
+					end,
+				},
+				maximize_btn = {
+					Connect = function(self,name,func)
+						local a = fullscreen_btn.Activated:Connect(func)
+
+						hooks.buttons.maximize_btn[name] = a
+
+						return a
+					end,
+					
+					Disconnect = function(self,name)
+						if hooks.buttons.maximize_btn[name] ~= nil then
+							hooks.buttons.maximize_btn[name]:Disconnect()
+						else
+							logger.warn("maximize_btn",`No hook named {name}`)
+						end
+					end,
+				}
+			}
+		}
+	}
 end
 
 return library
