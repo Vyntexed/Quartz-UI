@@ -463,7 +463,6 @@ function library:new_window(data, ...)
 			lW.Position = UDim2.new(0.5,0,0.5,0)
 			lW.AnchorPoint = Vector2.new(0.5,0.5)
 
-			load_window.bl = misc.blur(lW)
 			misc.UiCorner({0.036, 0}).Parent = lW
 			local winAR = misc.UiAspectRatio(1.648)
 			winAR.Parent = lW
@@ -516,7 +515,34 @@ function library:new_window(data, ...)
 
 			versionlabel.Size = misc.table_to_UDIM2({0.576, 0},{0.114, 0})
 			versionlabel.Position = misc.table_to_UDIM2({0.378, 0},{0.795, 0})
+			
+			if hasFlag(library.Flags.NoAnimations) == false then
+				local vT = versionlabel.TextTransparency
+				local sT = Subtitle.TextTransparency
+				local tT = TitleLabel.TextTransparency
+				local wT = lW.BackgroundTransparency
+				local wdT = win_dec.BackgroundTransparency
+								
+				TitleLabel.TextTransparency = 1
+				versionlabel.TextTransparency = 1
+				Subtitle.TextTransparency = 1
+				win_dec.BackgroundTransparency = 1
+				lW.BackgroundTransparency = 1
+				
+				local t1 = tweenService:Create(versionlabel,TweenInfo.new(0.3,Enum.EasingStyle.Circular,Enum.EasingDirection.Out),{TextTransparency=vT})
+				local t2 = tweenService:Create(Subtitle,t1.TweenInfo,{TextTransparency=sT})
+				local t3 = tweenService:Create(TitleLabel,t1.TweenInfo,{TextTransparency=tT})
 
+				local t4 = tweenService:Create(lW,t1.TweenInfo,{BackgroundTransparency=wT})
+				local t5 = tweenService:Create(win_dec,t1.TweenInfo,{BackgroundTransparency=wdT})
+				
+				lW.Visible = true
+
+				t1:Play(); t2:Play(); t3:Play(); t4:Play(); t5:Play()
+				
+			end
+			
+			load_window.bl = misc.blur(lW)	
 			lW.Visible = true
 
 		end
@@ -595,7 +621,7 @@ function library:new_window(data, ...)
 
 	if load_window ~= nil then
 		
-		local dur = 3
+		local dur = data.loadingWindow.minLoadTime or  3
 		
 		if tick()-load_window.t <= dur then
 			task.wait(math.clamp( ( dur - (tick()-load_window.t) ),0,dur+5))
@@ -603,6 +629,7 @@ function library:new_window(data, ...)
 		
 		if hasFlag(library.Flags.NoAnimations) == true then
 			load_window.w.Visible = false
+			window.Visible = true
 			load_window.bl.Update()
 			load_window.bl:Destroy()
 			load_window.w:Destroy()
