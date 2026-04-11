@@ -8,6 +8,10 @@ local library = {}
 library.themes = {
 	dark = {
 		bg_primary = {11, 15, 26,0.2},
+		bg_secondary = {24, 28, 45, 0.45},
+		bg_tertiary = {30, 35, 55, 0.55},
+		
+		stroke_primary = {255, 255, 255, 0.88},
 		
 		-- text
 		text_primary = {255, 255, 255, 0},
@@ -19,6 +23,11 @@ library.themes = {
 	
 	light = {
 		bg_primary = {245, 247, 252,0.4},
+		bg_secondary = {245, 247, 252, 0.75},
+		bg_tertiary = {235, 238, 245, 0.85},
+		
+		stroke_primary = {60, 60, 67, 0.85},
+		
 		
 		-- text
 		text_primary = {0, 0, 0,0},
@@ -69,7 +78,7 @@ local misc = {
 	end,
 	
 	UiGradient = function(Parent)
-		local a = Instance.new("UIGradient",library._internal.latestObject or Parent)
+		local a = Instance.new("UIGradient",Parent or library._internal.latestObject)
 		return a	
 	end,
 	
@@ -98,14 +107,19 @@ local misc = {
 	end,
 	
 	UiListLayout = function(Parent)
-		local d = Instance.new("UIListLayout",library._internal.latestObject or Parent)
+		local d = Instance.new("UIListLayout",Parent or library._internal.latestObject)
 		
 		return d
 	end,
 	
 	UiPadding = function(Parent)
-		local d = Instance.new("UIPadding",library._internal.latestObject or Parent)
+		local d = Instance.new("UIPadding",Parent or library._internal.latestObject)
 		
+		return d
+	end,
+	
+	UiStroke = function(Parent)
+		local d = Instance.new("UIStroke",Parent or library._internal.latestObject)
 		return d
 	end,
 	
@@ -556,17 +570,24 @@ function library:new_window(data, ...)
 	window.Size = misc.table_to_UDIM2({0.506, 0},{0.651, 0})
 	window.Position = UDim2.new(0.5,0,0.5,0)
 	window.AnchorPoint = Vector2.new(0.5,0.5)
+	window.ZIndex = -2
 	
 	misc.blur(window)
 	misc.UiCorner({0.036, 0})
 	local winAR = misc.UiAspectRatio(1.561)
 	winAR.Parent = window
 	
+	local ustr = misc.UiStroke(window)
+	ustr.Color = misc.get_color(library.theme.stroke_primary)[1]
+	ustr.Transparency = misc.get_color(library.theme.stroke_primary)[2]
+	ustr.Thickness = 2
+	
 	window.BackgroundTransparency = misc.get_color(library.theme.bg_primary)[2]
 	window.BackgroundColor3 = misc.get_color(library.theme.bg_primary)[1]
 	library._internal.latestWindow = window
 	
 	local win_dec = misc.Frame()
+	win_dec.ZIndex = -1
 	win_dec.Parent = window
 	win_dec.Size = misc.table_to_UDIM2({1, 0},{1, 0})
 	misc.UiCorner({0.036,0},win_dec)
@@ -576,11 +597,18 @@ function library:new_window(data, ...)
 	uigrad_dec.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(1,0.75)})
 	
 	local topbar = misc.Frame()
+
+	topbar.ZIndex = 9999999
+	
+	topbar.Parent = window
 	topbar.Size = misc.table_to_UDIM2({1, 0},{0.071, 0})
 	topbar.Position = misc.table_to_UDIM2({0, 0},{0, 0})
 	topbar.BackgroundTransparency = 1
 	
 	local topbar_button_holder = misc.Frame()
+	
+
+	topbar_button_holder.ZIndex = 9999999
 	topbar_button_holder.Parent = topbar
 	topbar_button_holder.Size = misc.table_to_UDIM2({0.194, 0},{1, 0})
 	topbar_button_holder.BackgroundTransparency = 1
@@ -588,6 +616,7 @@ function library:new_window(data, ...)
 	local x_btn = misc.Button(topbar_button_holder)
 	x_btn.BackgroundColor3 = Color3.fromRGB(252, 82, 85)
 	x_btn.Text = ""
+	x_btn.ZIndex = 9999999
 	x_btn.LayoutOrder = 1
 	x_btn.Size = misc.table_to_UDIM2({0.5, 0},{0.5, 0})
 	misc.UiAspectRatio(1,x_btn)
@@ -598,6 +627,7 @@ function library:new_window(data, ...)
 	fullscreen_btn.Text = ""
 	fullscreen_btn.Size = misc.table_to_UDIM2({0.5, 0},{0.5, 0})
 	fullscreen_btn.LayoutOrder = 3
+	fullscreen_btn.ZIndex = 9999999
 	misc.UiAspectRatio(1,fullscreen_btn)
 	misc.UiCorner({1,0},fullscreen_btn)
 	
@@ -608,6 +638,7 @@ function library:new_window(data, ...)
 	minimize_btn.Size = misc.table_to_UDIM2({0.5, 0},{0.5, 0})
 	misc.UiAspectRatio(1,minimize_btn)
 	misc.UiCorner({1,0},minimize_btn)
+	minimize_btn.ZIndex = 9999999
 	
 	local padding = misc.UiPadding(topbar_button_holder)
 	padding.PaddingLeft = UDim.new(0.06, 0)
@@ -619,7 +650,7 @@ function library:new_window(data, ...)
 	ULL.FillDirection = Enum.FillDirection.Horizontal
 	ULL.SortOrder = Enum.SortOrder.LayoutOrder
 
-	if load_window ~= nil then
+	if load_window.w ~= nil then
 		
 		local dur = data.loadingWindow.minLoadTime or  3
 		
@@ -652,6 +683,25 @@ function library:new_window(data, ...)
 			load_window.w:Destroy()
 		end
 		
+	end
+	
+	window.Visible = true
+	
+	if hasFlag(library.Styles.Dashboard) then
+		local sidebar = misc.Frame()
+		
+		sidebar.BackgroundTransparency = misc.get_color(library.theme.bg_secondary)[2]
+		sidebar.BackgroundColor3 = misc.get_color(library.theme.bg_secondary)[1]
+		
+		sidebar.Parent = window
+		sidebar.Size = misc.table_to_UDIM2({0.294, 0},{1.002, 0})
+		sidebar.Position = misc.table_to_UDIM2({0, 0},{0, 0})
+		
+		local gradUi = misc.UiGradient(sidebar)
+		gradUi.Color = ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,255,255))})
+		gradUi.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.381),NumberSequenceKeypoint.new(1,0.681)})
+		
+		misc.UiCorner({0.1,0},sidebar)
 	end
 	
 	if hasFlag(library.Flags.NoDrag) == false then
@@ -748,7 +798,14 @@ function library:new_window(data, ...)
 					end,
 				}
 			}
-		}
+		},
+		
+		Tab = function(Title)
+			if hasFlag(library.Styles.Custom) == true then
+				logger.error("styles","Using custom style, no tab could be created")
+				return
+			end
+		end,
 	}
 end
 
