@@ -44,6 +44,14 @@ local window = Quartz:new_window()
 
 ## Flags
 
-| Flag | What it does        |
+| Flag | Description       |
 |--------|---------------------|
 | `Quartz.Flags.NoResize` | Prevents the user from resizing a window |
+
+## Styles
+
+| Style | Description        |
+|--------|---------------------|
+| `Quartz.Styles.Dashboard` | Uses a dashboard style with a panel on the left side and content on the right, everything here is pre-programmed to fit and look nice |
+| `Quartz.Styles.Custom` | No style, you can make the window look however you see fit |
+
