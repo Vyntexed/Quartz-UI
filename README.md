@@ -8,8 +8,7 @@ local Quartz = loadstring(game:HttpGet("https://raw.githubusercontent.com/Vyntex
 
 ## Init
 
-Using secure removes the background blur due to being  easily detected, I will try to fix this in the future.
-
+Using secure is highly recommended read the [Trade-off matrix](#Secure)
 ```lua
 Quartz:init({
   secure = true
@@ -74,3 +73,12 @@ Quartz:new_window(
 )
 ```
 Please note that if you put in multiple styles it will default to the first style given and throw a warning. You can only use 1 style per window.
+
+## Secure
+
+Secure is designed to make this library completely undetectable and minimally invasive in any game.
+
+| Feature | With secure | Without Secure |
+|--------|------------|----------------|
+| BackgroundBlur | No | Yes |
+| CoreGui | Mandatory | Prefferable | 
