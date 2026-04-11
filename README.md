@@ -8,7 +8,7 @@ local Quartz = loadstring(game:HttpGet("https://raw.githubusercontent.com/Vyntex
 
 ## Init
 
-Using secure is highly recommended read the [Trade-off matrix](#Secure)
+Using secure is highly recommended read the section about [secure mode](#Secure)
 ```lua
 Quartz:init({
   secure = true
