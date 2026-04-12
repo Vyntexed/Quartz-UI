@@ -1,6 +1,6 @@
 # Quartz UI
 
-## Loading the library
+# Loading the library
 
 ```lua
 local Quartz = loadstring(game:HttpGet("https://raw.githubusercontent.com/Vyntexed/Quartz-UI/refs/heads/main/src.lua"))()
