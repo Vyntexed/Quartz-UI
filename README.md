@@ -104,4 +104,4 @@ Secure is designed to make this library completely undetectable and minimally in
 | Feature | With secure | Without Secure |
 |--------|------------|----------------|
 | BackgroundBlur | No | Yes |
-| CoreGui | Mandatory | Prefferable | 
+| CoreGui | Mandatory | Preferred | 
