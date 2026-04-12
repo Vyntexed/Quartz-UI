@@ -86,7 +86,7 @@ library.themes = {
 
 library.theme = library.themes.dark
 
-library.Styles = {
+library.Style = {
 	Dashboard = "styleDashboard",
 	Custom = "styleCustom"
 }
@@ -103,6 +103,7 @@ library.Components = {
 		Secondary = "vBtnSecondary"
 	}
 }
+
 
 local logger = {
 	warn = function(name,content)
@@ -122,28 +123,89 @@ NewFont = function(Weight,Style)
 	return Font.new(Font.fromEnum(library.theme.Font),Weight,Style)
 end
 
+
+
+function library:init(data)
+
+	library._internal = {}
+	library._internal.latestObject = nil
+	library._internal.latestWindow = nil
+	library._internal.latestContainer = nil
+	library._internal.latestTab = nil
+
+	library._internal.screen = Instance.new("ScreenGui")
+
+
+	library._internal.settings = {
+		secure = false
+	}
+
+	local hasBeenParented = false
+
+	if data then
+
+		if data.secure == true then
+			library._internal.settings.secure = data.secure
+			
+			xpcall(function()
+				library._internal.screen.Parent = game:GetService("CoreGui")
+				
+				if library._internal.screen.Parent == nil then
+					hasBeenParented = false
+				else
+					hasBeenParented = true
+				end
+			end, function()
+				hasBeenParented = false
+			end)
+			
+			if hasBeenParented == false then
+				logger.error("secure","Unable to access CoreGui, since secure is enabled execution has been stopped")
+			end
+			
+			misc.blur = function()
+				return {
+					Destroy = function() end,
+					Update = function() end
+				}
+			end	
+		end
+	end
+	
+	if hasBeenParented == false then
+		hasBeenParented = true
+		library._internal.screen.Parent = localPlayer.PlayerGui
+	end
+	
+	repeat
+		task.wait(0.1)
+	until
+	game:IsLoaded()
+end
+
 local misc = {
 	Frame = function()
 		local a = Instance.new("Frame", library._internal.latestObject)
 		library._internal.latestObject = a
 		return a	
 	end,
-	
+
 	Label = function(Text,Parent)
 		local a = Instance.new("TextLabel",Parent or library._internal.latestObject)
 		library._internal.latestObject = a
-		
+
 		a.Text = Text or "Placeholder"
 		a.FontFace = NewFont(Enum.FontWeight.Medium,Enum.FontStyle.Normal)
-		
+		a.RichText = true
+
 		return a
 	end,
-	
+
 	UiGradient = function(Parent)
 		local a = Instance.new("UIGradient",Parent or library._internal.latestObject)
 		return a	
 	end,
-	
+
 	UiAspectRatio = function(ratio,parent)
 		local parent = parent or library._internal.latestObject
 		local d = Instance.new("UIAspectRatioConstraint",parent)
@@ -151,7 +213,7 @@ local misc = {
 
 		return d
 	end,
-	
+
 	UiCorner = function(t1,parent)
 		local parent = parent or library._internal.latestObject
 		local d = Instance.new("UICorner",parent)
@@ -159,36 +221,36 @@ local misc = {
 
 		return d
 	end,
-	
+
 	Button = function(parent)
 		local parent = parent or library._internal.latestObject
-		
+
 		local d = Instance.new("TextButton",parent)
 		d.TextScaled = true
 		d.FontFace = NewFont(Enum.FontWeight.Medium,Enum.FontStyle.Normal)
-		
+
 		return d
 	end,
-	
+
 	UiListLayout = function(Parent)
 		local d = Instance.new("UIListLayout",Parent or library._internal.latestObject)
-		
+
 		return d
 	end,
-	
+
 	UiPadding = function(Parent)
 		local d = Instance.new("UIPadding",Parent or library._internal.latestObject)
-		
+
 		return d
 	end,
-	
+
 	UiStroke = function(Parent)
 		local d = Instance.new("UIStroke",Parent or library._internal.latestObject)
 		return d
 	end,
-	
+
 	-- other
-	
+
 	add_drag = function(activator,target)
 		local dragging = false
 		local offset = Vector2.new()
@@ -234,15 +296,15 @@ local misc = {
 			target.Position = UDim2.new(pos.X, 0, pos.Y, 0)
 		end)
 	end,
-	
+
 	table_to_UDIM2 = function(t1,t2)
 		return UDim2.new(t1[1],t1[2],t2[1],t2[2])
 	end,
-	
+
 	get_color = function(tbl)
 		return {Color3.fromRGB(tbl[1],tbl[2],tbl[3]),tbl[4] or 0}
 	end,
-	
+
 	blur = function(to_blur)
 		local camera			= workspace.CurrentCamera
 
@@ -398,7 +460,7 @@ local misc = {
 		local self = BlurredGui.new(to_blur, "Rectangle")
 
 		BlurredGui.updateAll()
-		
+
 		return {
 			Destroy = function()
 				BlurredGui.Destroy(self)
@@ -408,65 +470,39 @@ local misc = {
 			end,
 		}
 	end,
-	
+
 }
 
-function library:init(data)
+local ElementCreator = {
+	Title = function(self,Text)
+		local a = misc.Label(Text)
+		a.BackgroundTransparency = 1
+		a.TextScaled = true
+		a.Parent = library._internal.new_parent
+		a.Size = misc.table_to_UDIM2({0.518, 0},{0.08, 0})
+		a.TextXAlignment = Enum.TextXAlignment.Left
+		a.Parent = library._internal.latestContainer
+		
+		a.FontFace = NewFont(Enum.FontWeight.Bold,Enum.FontStyle.Normal)
 
-	library._internal = {}
-	library._internal.latestObject = nil
-	library._internal.latestWindow = nil
-	library._internal.screen = Instance.new("ScreenGui")
+		a.TextTransparency = misc.get_color(library.theme.text_primary)[2]
+		a.TextColor3 = misc.get_color(library.theme.text_primary)[1]
+		
+		return {
+			SetText = function(c)
+				a.Text = c
+			end,
+			GetText = function(c)
+				return a.Text
+			end,
+			structure = {
+				label = a
+			}
+		}
+	end,
+}
 
-
-	library._internal.settings = {
-		secure = false
-	}
-
-	local hasBeenParented = false
-
-	if data then
-
-		if data.secure == true then
-			library._internal.settings.secure = data.secure
-			
-			xpcall(function()
-				library._internal.screen.Parent = game:GetService("CoreGui")
-				
-				if library._internal.screen.Parent == nil then
-					hasBeenParented = false
-				else
-					hasBeenParented = true
-				end
-			end, function()
-				hasBeenParented = false
-			end)
-			
-			if hasBeenParented == false then
-				logger.error("secure","Unable to access CoreGui, since secure is enabled execution has been stopped")
-			end
-			
-			misc.blur = function()
-				return {
-					Destroy = function() end,
-					Update = function() end
-				}
-			end	
-		end
-	end
-	
-	if hasBeenParented == false then
-		hasBeenParented = true
-		library._internal.screen.Parent = localPlayer.PlayerGui
-	end
-	
-	repeat
-		task.wait(0.1)
-	until
-	game:IsLoaded()
-end
-
-function library:new_window(data, ...)
+function library:Window(data, ...)
 	
 	local args = {...}
 	
@@ -478,7 +514,7 @@ function library:new_window(data, ...)
 	local CurrentStyle = {}
 
 	for i, v in pairs({...}) do
-		for a,b in pairs(library.Styles) do
+		for a,b in pairs(library.Style) do
 			if v == b then
 				table.insert(CurrentStyle,v)
 			end
@@ -488,7 +524,7 @@ function library:new_window(data, ...)
 	if #CurrentStyle > 1 then
 		logger.warn("window_style","Multiple styles used defaulting to style with the index 1")
 	elseif #CurrentStyle <= 0 then
-		CurrentStyle = {library.Styles.Custom}
+		CurrentStyle = {library.Style.Custom}
 	end
 
 	CurrentStyle = CurrentStyle[1]
@@ -637,6 +673,7 @@ function library:new_window(data, ...)
 	window.BackgroundTransparency = misc.get_color(library.theme.bg_primary)[2]
 	window.BackgroundColor3 = misc.get_color(library.theme.bg_primary)[1]
 	library._internal.latestWindow = window
+	library._internal.latestContainer = window
 	
 	local win_dec = misc.Frame()
 	win_dec.ZIndex = -1
@@ -805,7 +842,7 @@ function library:new_window(data, ...)
 		}
 	}
 	
-	if hasFlag(library.Styles.Dashboard) then
+	if hasFlag(library.Style.Dashboard) then
 		local sidebar = misc.Frame()
 		
 		sidebar.BackgroundTransparency = misc.get_color(library.theme.bg_secondary)[2]
@@ -832,6 +869,12 @@ function library:new_window(data, ...)
 		library._internal.style = {}
 		library._internal.style.sidebar = sidebar
 		library._internal.style.sidebar_sel = nil
+		
+		library._internal.style.tabHolder = misc.Frame()
+		library._internal.style.tabHolder.Parent = window
+		library._internal.style.tabHolder.Size = UDim2.new(1-sidebar.Size.X.Scale,0,1,0)
+		library._internal.style.tabHolder.Position = UDim2.new(sidebar.Size.X.Scale,0,0,0)
+		library._internal.style.tabHolder.BackgroundTransparency = 1
 	end
 	
 	to_return.Button = function(self,Text,Variant)
@@ -911,15 +954,30 @@ function library:new_window(data, ...)
 	end
 
 	to_return.Tab = function(self,Title)
-		if hasFlag(library.Styles.Custom) == true then
+		local rtrn = {}
+		
+		local parentingT = nil
+		
+		if hasFlag(library.Style.Custom) == true then
 			logger.error("styles","Using custom style, no tab could be created")
 			return
-		elseif hasFlag(library.Styles.Dashboard) then
+		elseif hasFlag(library.Style.Dashboard) then
 			local sidebar = library._internal.style.sidebar
+			local tabHolder = library._internal.style.tabHolder
 			
 			local a = to_return:Button(Title,library.Components.Button.Secondary)
 			a.structure.btn.Parent = sidebar
 			a.structure.btn.Size = misc.table_to_UDIM2({0.787, 0},{0.068, 0})
+			
+			parentingT = misc.Frame()
+			misc.UiListLayout(parentingT).Padding = UDim.new(0.025,0)
+			local cab = misc.UiPadding(parentingT)
+			cab.PaddingLeft = UDim.new(0.02)
+			cab.PaddingTop = UDim.new(0.07)
+			parentingT.Size = UDim2.new(1,0,1,0)
+			parentingT.Position = UDim2.new(0,0,0,0)
+			parentingT.Parent = tabHolder
+			parentingT.BackgroundTransparency = 1
 			
 			if library._internal.style.sidebar_sel == nil then
 				library._internal.style.sidebar_sel = a.structure.btn
@@ -935,6 +993,13 @@ function library:new_window(data, ...)
 				a.structure.stroke.Transparency = misc.get_color(library.theme.button_secondary_stroke_deselected)[2]
 			end
 		end
+		
+		if parentingT ~= nil then
+			library._internal.latestContainer = parentingT
+			library._internal.latestTab = parentingT
+		end
+		
+		return ElementCreator
 	end
 	
 	if hasFlag(library.Flags.NoDrag) == false then
