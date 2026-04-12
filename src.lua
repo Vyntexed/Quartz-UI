@@ -7,9 +7,34 @@ local library = {}
 
 library.themes = {
 	dark = {
+		
+		Font = "Inter",
+		
 		bg_primary = {11, 15, 26,0.2},
 		bg_secondary = {24, 28, 45, 0.45},
 		bg_tertiary = {30, 35, 55, 0.55},
+		
+		-- buttons
+			
+		button_primary = {0, 122, 255, 0.3},
+		button_primary_text = {255,255,255,0},
+		
+		button_primary_hover = {0, 122, 255, 0.10},
+		button_primary_pressed = {0, 102, 215, 0.05},
+
+		button_primary_stroke = {255, 255, 255, 0.65},
+		button_primary_highlight = {255, 255, 255, 0.7},
+		
+		-- btn secondary
+		
+		button_secondary = {255, 255, 255, 0.82},
+		button_secondary_text = {255,255,255,0.08},
+		button_secondary_stroke = {255,255,255,0.8},
+		
+		button_secondary_deselected = {255, 255, 255, 1},
+		button_secondary_text_deselected = {255,255,255,0.55},
+		button_secondary_stroke_deselected = {255,255,255,1},
+		
 		
 		stroke_primary = {255, 255, 255, 0.88},
 		
@@ -22,10 +47,32 @@ library.themes = {
 	},
 	
 	light = {
+		
+		Font = "Inter",
+		
 		bg_primary = {245, 247, 252,0.4},
 		bg_secondary = {245, 247, 252, 0.75},
 		bg_tertiary = {235, 238, 245, 0.85},
 		
+		-- buttons
+		
+		button_primary = {0, 122, 255, 0.25},
+		button_primary_hover = {0, 122, 255, 0.18},
+		button_primary_pressed = {0, 102, 215, 0.12},
+		button_primary_text = {255,255,255,0},
+
+		button_primary_stroke = {255, 255, 255, 0.4},
+		button_primary_highlight = {255, 255, 255, 0.7},
+		
+		-- btn secondary
+		
+		button_secondary = {0, 0, 0, 0.88},
+		button_secondary_text = {0, 0, 0, 0.08},
+		button_secondary_stroke = {0, 0, 0, 0.82},
+		button_secondary_deselected = {0, 0, 0, 1},
+		button_secondary_text_deselected = {0, 0, 0, 0.55},
+		button_secondary_stroke_deselected = {0, 0, 0, 1},
+			
 		stroke_primary = {60, 60, 67, 0.85},
 		
 		
@@ -50,6 +97,13 @@ library.Flags = {
 	["NoAnimations"] = "flagNoAnimations"
 }
 
+library.Components = {
+	Button = {
+		Primary = "vBtnPrimary",
+		Secondary = "vBtnSecondary"
+	}
+}
+
 local logger = {
 	warn = function(name,content)
 		warn("Quartz: "..name.." - "..content)
@@ -59,6 +113,14 @@ local logger = {
 		error("Quartz: "..name.." - "..content)
 	end,
 }
+
+NewFont = function(Weight,Style)
+	if library.theme.Font == "Inter" then
+		return Font.new(Font.fromId(12187365364).Family,Weight,Style)	
+	end
+
+	return Font.new(Font.fromEnum(library.theme.Font),Weight,Style)
+end
 
 local misc = {
 	Frame = function()
@@ -72,7 +134,7 @@ local misc = {
 		library._internal.latestObject = a
 		
 		a.Text = Text or "Placeholder"
-		a.FontFace = Font.new(Font.fromName("Inter").Family,Enum.FontWeight.Medium,Enum.FontStyle.Normal)
+		a.FontFace = NewFont(Enum.FontWeight.Medium,Enum.FontStyle.Normal)
 		
 		return a
 	end,
@@ -102,6 +164,8 @@ local misc = {
 		local parent = parent or library._internal.latestObject
 		
 		local d = Instance.new("TextButton",parent)
+		d.TextScaled = true
+		d.FontFace = NewFont(Enum.FontWeight.Medium,Enum.FontStyle.Normal)
 		
 		return d
 	end,
@@ -177,18 +241,6 @@ local misc = {
 	
 	get_color = function(tbl)
 		return {Color3.fromRGB(tbl[1],tbl[2],tbl[3]),tbl[4] or 0}
-	end,
-	
-	scaleToOffsetUDim2 = function(udim2)
-		local camera = game:GetService("Workspace").CurrentCamera
-		local viewport = camera.ViewportSize
-
-		return UDim2.new(
-			0,
-			udim2.X.Scale * viewport.X + udim2.X.Offset,
-			0,
-			udim2.Y.Scale * viewport.Y + udim2.Y.Offset
-		)
 	end,
 	
 	blur = function(to_blur)
@@ -499,7 +551,7 @@ function library:new_window(data, ...)
 			TitleLabel.TextScaled = true
 			TitleLabel.BackgroundTransparency = 1
 			TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-			TitleLabel.FontFace = Font.new(TitleLabel.FontFace.Family,Enum.FontWeight.Bold,TitleLabel.FontFace.Style)
+			TitleLabel.FontFace = NewFont(Enum.FontWeight.Bold,Enum.FontStyle.Normal)
 			TitleLabel.TextTransparency = misc.get_color(library.theme.text_primary)[2]
 			TitleLabel.TextColor3 = misc.get_color(library.theme.text_primary)[1]
 
@@ -687,6 +739,72 @@ function library:new_window(data, ...)
 	
 	window.Visible = true
 	
+	local hooks = {
+		buttons = {
+			close_btn = {},
+			minimize_btn = {},
+			maximize_btn = {},
+		}
+	}
+
+	local to_return = {
+		hooks = {
+			buttons = {
+				close_btn = {
+					Connect = function(self,name,func)
+						local a = x_btn.Activated:Connect(func)
+
+						hooks.buttons.close_btn[name] = a
+
+						return a
+					end,
+
+					Disconnect = function(self,name)
+						if hooks.buttons.close_btn[name] ~= nil then
+							hooks.buttons.close_btn[name]:Disconnect()
+						else
+							logger.warn("close_btn",`No hook named {name}`)
+						end
+					end,
+				},
+				minimize_btn = {
+					Connect = function(self,name,func)
+						local a = minimize_btn.Activated:Connect(func)
+
+						hooks.buttons.minimize_btn[name] = a
+
+						return a
+					end,
+
+					Disconnect = function(self,name)
+						if hooks.buttons.minimize_btn[name] ~= nil then
+							hooks.buttons.minimize_btn[name]:Disconnect()
+						else
+							logger.warn("minimize_btn",`No hook named {name}`)
+						end
+					end,
+				},
+				maximize_btn = {
+					Connect = function(self,name,func)
+						local a = fullscreen_btn.Activated:Connect(func)
+
+						hooks.buttons.maximize_btn[name] = a
+
+						return a
+					end,
+
+					Disconnect = function(self,name)
+						if hooks.buttons.maximize_btn[name] ~= nil then
+							hooks.buttons.maximize_btn[name]:Disconnect()
+						else
+							logger.warn("maximize_btn",`No hook named {name}`)
+						end
+					end,
+				}
+			}
+		}
+	}
+	
 	if hasFlag(library.Styles.Dashboard) then
 		local sidebar = misc.Frame()
 		
@@ -702,6 +820,121 @@ function library:new_window(data, ...)
 		gradUi.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0.381),NumberSequenceKeypoint.new(1,0.681)})
 		
 		misc.UiCorner({0.1,0},sidebar)
+		
+		misc.UiAspectRatio(0.458,sidebar)
+		
+		misc.UiPadding(sidebar).PaddingTop = UDim.new(0.1,0)
+		
+		local lsa = misc.UiListLayout(sidebar)
+		lsa.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		lsa.Padding = UDim.new(0.05,0)
+		
+		library._internal.style = {}
+		library._internal.style.sidebar = sidebar
+		library._internal.style.sidebar_sel = nil
+	end
+	
+	to_return.Button = function(self,Text,Variant)
+		local btn = misc.Button()
+		
+		Variant = Variant or library.Components.Button.Primary
+		
+		btn.Text = Text or "Button"
+		
+		local rtrn = {}
+		rtrn.structure = {btn=btn}
+		
+		if Variant == library.Components.Button.Primary then
+			btn.BackgroundColor3 = misc.get_color(library.theme.button_primary)[1]
+			btn.BackgroundTransparency = misc.get_color(library.theme.button_primary)[2]
+			btn.TextScaled = true
+
+			btn.TextTransparency = misc.get_color(library.theme.button_primary_text)[2]
+			btn.TextColor3 = misc.get_color(library.theme.button_primary_text)[1]
+			
+			local grad1 = misc.UiGradient(btn)
+			grad1.Color = ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,255,255))})
+			grad1.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(1,0)})
+			
+			local str = misc.UiStroke(btn)
+			str.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			str.Color = misc.get_color(library.theme.button_primary_stroke)[1]
+			str.Transparency = misc.get_color(library.theme.button_primary_stroke)[2]
+			str.Thickness = 1
+			
+			local fr = Instance.new("Frame",btn)
+			fr.BackgroundColor3 = Color3.fromRGB(255,255,255)
+			fr.Size = misc.table_to_UDIM2({1,0},{1,0})
+			fr.Position = UDim2.new(0,0,0,0)
+
+			local uicorn = misc.UiCorner({0.25,0},btn)
+			uicorn:Clone().Parent = fr
+			
+			local cak = misc.UiGradient(fr)
+			cak.Color = ColorSequence.new(
+				{
+					ColorSequenceKeypoint.new(0,misc.get_color(library.theme.button_primary_highlight)[1]),
+					ColorSequenceKeypoint.new(1,misc.get_color(library.theme.button_primary_highlight)[1])})
+			cak.Rotation = 90
+			cak.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,misc.get_color(library.theme.button_primary_highlight)[2]),NumberSequenceKeypoint.new(1,1)})
+			
+			-- return
+			
+			rtrn.structure.stroke = str
+			rtrn.structure.outerGradient = grad1
+			rtrn.structure.innerFrame = fr
+			rtrn.structure.innerGradient = cak
+		elseif Variant == library.Components.Button.Secondary then
+			btn.BackgroundColor3 = misc.get_color(library.theme.button_secondary)[1]
+			btn.BackgroundTransparency = misc.get_color(library.theme.button_secondary)[2]
+			btn.TextTransparency = misc.get_color(library.theme.button_secondary_text)[2]
+			btn.TextColor3 = misc.get_color(library.theme.button_secondary_text)[1]
+			btn.TextScaled = true
+			
+			misc.UiCorner({0.25, 0},btn)
+			
+			local str = misc.UiStroke(btn)
+			str.Color = misc.get_color(library.theme.button_secondary_stroke)[1]
+			str.Transparency = misc.get_color(library.theme.button_secondary_stroke)[2]
+			str.Thickness = 1
+			str.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			
+			-- return	
+			rtrn.structure.stroke = str
+			
+		else
+			logger.error("Components","Unknown component variant "..tostring(Variant))
+			return rtrn
+		end
+		
+		return rtrn
+	end
+
+	to_return.Tab = function(self,Title)
+		if hasFlag(library.Styles.Custom) == true then
+			logger.error("styles","Using custom style, no tab could be created")
+			return
+		elseif hasFlag(library.Styles.Dashboard) then
+			local sidebar = library._internal.style.sidebar
+			
+			local a = to_return:Button(Title,library.Components.Button.Secondary)
+			a.structure.btn.Parent = sidebar
+			a.structure.btn.Size = misc.table_to_UDIM2({0.787, 0},{0.068, 0})
+			
+			if library._internal.style.sidebar_sel == nil then
+				library._internal.style.sidebar_sel = a.structure.btn
+			else
+				a.structure.stroke.Enabled = false
+				a.structure.btn.BackgroundTransparency = misc.get_color(library.theme.button_secondary_deselected)[2]
+				a.structure.btn.BackgroundColor3 = misc.get_color(library.theme.button_secondary_deselected)[1]
+
+				a.structure.btn.TextTransparency = misc.get_color(library.theme.button_secondary_text_deselected)[2]
+				a.structure.btn.BackgroundColor3 = misc.get_color(library.theme.button_secondary_text_deselected)[1]
+
+				a.structure.stroke.Color = misc.get_color(library.theme.button_secondary_stroke_deselected)[1]
+				a.structure.stroke.Transparency = misc.get_color(library.theme.button_secondary_stroke_deselected)[2]
+			end
+		end
 	end
 	
 	if hasFlag(library.Flags.NoDrag) == false then
@@ -735,78 +968,7 @@ function library:new_window(data, ...)
 		--end)
 	end
 	
-	local hooks = {
-		buttons = {
-			close_btn = {},
-			minimize_btn = {},
-			maximize_btn = {},
-		}
-	}
-	
-	return {
-		hooks = {
-			buttons = {
-				close_btn = {
-					Connect = function(self,name,func)
-						local a = x_btn.Activated:Connect(func)
-
-						hooks.buttons.close_btn[name] = a
-
-						return a
-					end,
-					
-					Disconnect = function(self,name)
-						if hooks.buttons.close_btn[name] ~= nil then
-							hooks.buttons.close_btn[name]:Disconnect()
-						else
-							logger.warn("close_btn",`No hook named {name}`)
-						end
-					end,
-				},
-				minimize_btn = {
-					Connect = function(self,name,func)
-						local a = minimize_btn.Activated:Connect(func)
-
-						hooks.buttons.minimize_btn[name] = a
-
-						return a
-					end,
-					
-					Disconnect = function(self,name)
-						if hooks.buttons.minimize_btn[name] ~= nil then
-							hooks.buttons.minimize_btn[name]:Disconnect()
-						else
-							logger.warn("minimize_btn",`No hook named {name}`)
-						end
-					end,
-				},
-				maximize_btn = {
-					Connect = function(self,name,func)
-						local a = fullscreen_btn.Activated:Connect(func)
-
-						hooks.buttons.maximize_btn[name] = a
-
-						return a
-					end,
-					
-					Disconnect = function(self,name)
-						if hooks.buttons.maximize_btn[name] ~= nil then
-							hooks.buttons.maximize_btn[name]:Disconnect()
-						else
-							logger.warn("maximize_btn",`No hook named {name}`)
-						end
-					end,
-				}
-			}
-		},
-		
-		Tab = function(Title)
-			if hasFlag(library.Styles.Custom) == true then
-				logger.error("styles","Using custom style, no tab could be created")
-				return
-			end
-		end,
-	}
+	return to_return
 end
 
 return library
