@@ -49,7 +49,7 @@ local function applyT(Object, Properties, startProps, t)
 	end
 end
 
-return function(self, data): { Play: (self: any) -> () }
+local Create =  function(self, data): { Play: (self: any) -> () }
 
 	local log = logger("Quartz Motion")
 
@@ -149,3 +149,25 @@ return function(self, data): { Play: (self: any) -> () }
 		end,
 	}
 end
+
+return {
+	Info = {
+		new = function(Object,Duration,Type,Properties)
+			return {
+				Object = Object,
+				Duration = Duration,
+				Type = Type,
+				Properties = Properties
+			}		
+		end,
+	},
+
+	Enum = {
+		AnimationType = {
+			Linear = "Linear",
+			Spring = "Spring"	
+		}
+	},
+
+	Create = Create
+}
