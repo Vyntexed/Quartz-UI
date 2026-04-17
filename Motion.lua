@@ -90,6 +90,7 @@ local Create =  function(self, data): { Play: (self: any) -> () }
 	local elapsed = 0
 	local conn = nil
 	local startProps = {}
+	local fin = false
 
 	for i in pairs(Properties) do
 		startProps[i] = Object[i]
@@ -132,7 +133,7 @@ local Create =  function(self, data): { Play: (self: any) -> () }
 					)
 
 					if elapsed >= Duration then
-						t        = 1
+						t = 1
 						finished = true
 					end
 				end
@@ -140,6 +141,7 @@ local Create =  function(self, data): { Play: (self: any) -> () }
 				applyT(Object, Properties, startProps, t)
 
 				if finished then
+					fin = true
 					for i, v in pairs(Properties) do
 						Object[i] = v
 					end
@@ -147,10 +149,21 @@ local Create =  function(self, data): { Play: (self: any) -> () }
 				end
 			end)
 		end,
+		
+		Wait = function()
+			repeat
+				task.wait()
+			until
+			fin
+		end,
+		
+		Stop = function()
+			conn:Disconnect()
+		end,
 	}
 end
 
-return {
+local rtrn = {
 	Info = {
 		new = function(Object,Duration,Type,Properties)
 			return {
@@ -171,3 +184,51 @@ return {
 
 	Create = Create
 }
+
+rtrn.Presets = {
+	FadeDescendants = function(Data)
+		
+		local original = {}
+		local opposite = {}
+		
+		return {
+			FadeOut = function()
+				for i, v: Instance in pairs(Data.Object:GetDescendants()) do
+					if v:IsA('TextLabel') or v:IsA("TextButton") then
+						original[v] = {
+							BackgroundTransparency = v.BackgroundTransparency,
+							TextTransparency = v.TextTransparency
+						}
+					elseif v:IsA("Frame") then
+						original[v] = {
+							BackgroundTransparency = v.BackgroundTransparency
+						}
+					elseif v:IsA("UIStroke") then
+						original[v] = {
+							Transparency = v.Transparency
+						}
+					end
+				end
+
+				for i, v in pairs(original) do
+					opposite[i] = {}
+					for ini in pairs(v) do
+						opposite[i][ini] = 1
+					end
+				end
+
+				for i, v in pairs(opposite) do
+					rtrn:Create(rtrn.Info.new(i, Data.Duration, Data.Type, v)):Play()
+				end
+			end,
+			
+			FadeIn = function()
+				for i, v in pairs(original) do
+					rtrn:Create(rtrn.Info.new(i,Data.Duration,Data.Type,v)):Play()
+				end
+			end,
+		}
+	end,
+}
+
+return rtrn
