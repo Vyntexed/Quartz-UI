@@ -186,37 +186,44 @@ local rtrn = {
 }
 
 rtrn.Presets = {
-	FadeDescendants = function(Data)
+	FadeDescendants = function(Data,Exceptions)
 		
 		local original = {}
 		local opposite = {}
 		
+		Exceptions = Exceptions or {}
+		
+		for i, v: Instance in pairs(Data.Object:GetDescendants()) do
+			
+			if table.find(Exceptions,v) then
+				continue
+			end
+			
+			if v:IsA('TextLabel') or v:IsA("TextButton") then
+				original[v] = {
+					BackgroundTransparency = v.BackgroundTransparency,
+					TextTransparency = v.TextTransparency
+				}
+			elseif v:IsA("Frame") then
+				original[v] = {
+					BackgroundTransparency = v.BackgroundTransparency
+				}
+			elseif v:IsA("UIStroke") then
+				original[v] = {
+					Transparency = v.Transparency
+				}
+			end
+		end
+
+		for i, v in pairs(original) do
+			opposite[i] = {}
+			for ini in pairs(v) do
+				opposite[i][ini] = 1
+			end
+		end
+		
 		return {
 			FadeOut = function()
-				for i, v: Instance in pairs(Data.Object:GetDescendants()) do
-					if v:IsA('TextLabel') or v:IsA("TextButton") then
-						original[v] = {
-							BackgroundTransparency = v.BackgroundTransparency,
-							TextTransparency = v.TextTransparency
-						}
-					elseif v:IsA("Frame") then
-						original[v] = {
-							BackgroundTransparency = v.BackgroundTransparency
-						}
-					elseif v:IsA("UIStroke") then
-						original[v] = {
-							Transparency = v.Transparency
-						}
-					end
-				end
-
-				for i, v in pairs(original) do
-					opposite[i] = {}
-					for ini in pairs(v) do
-						opposite[i][ini] = 1
-					end
-				end
-
 				for i, v in pairs(opposite) do
 					rtrn:Create(rtrn.Info.new(i, Data.Duration, Data.Type, v)):Play()
 				end
